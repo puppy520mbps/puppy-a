@@ -1,8 +1,0 @@
-name = "inspiration-notes-shared"
-compatibility_date = "2026-05-30"
-
-# 本地开发时可在这里绑定 KV；生产环境也可直接在 Cloudflare Dashboard > Pages 项目 > Settings > Bindings 里添加
-# [[kv_namespaces]]
-# binding = "NOTES_KV"
-# id = "你的生产 KV namespace ID"
-# preview_id = "你的预览 KV namespace ID"
