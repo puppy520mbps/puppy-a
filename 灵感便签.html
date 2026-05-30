@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>灵感便签 · 共享版</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card: rgba(255, 255, 255, 0.86);
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --line: rgba(0, 0, 0, 0.08);
+      --blue: #0071e3;
+      --blue-hover: #0077ed;
+      --note: #fff8dc;
+      --note-border: #eee2a9;
+      --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 18px 44px rgba(0, 0, 0, 0.10);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --board-max: 1480px;
+      --gap: clamp(16px, 2vw, 28px);
+      --page-x: clamp(16px, 3vw, 42px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      min-height: 100%;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+        "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 8% 4%, rgba(255, 255, 255, 0.9) 0 260px, transparent 261px),
+        radial-gradient(circle at 88% 10%, rgba(235, 239, 255, 0.8) 0 320px, transparent 321px),
+        linear-gradient(180deg, #ffffff 0%, var(--bg) 42%, #f0f0f2 100%);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    button { font: inherit; }
+
+    .glass-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding-top: env(safe-area-inset-top);
+      background: rgba(251, 251, 253, 0.72);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      -webkit-backdrop-filter: saturate(180%) blur(22px);
+      backdrop-filter: saturate(180%) blur(22px);
+    }
+
+    .nav-inner {
+      width: min(var(--board-max), 100%);
+      margin: 0 auto;
+      padding: 14px var(--page-x);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      flex: 0 0 auto;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #ffffff, #e9e9ed);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 20px rgba(0, 0, 0, 0.08);
+      color: #111;
+      font-size: 18px;
+    }
+
+    .brand-copy { min-width: 0; }
+
+    .brand-title {
+      font-size: clamp(18px, 2vw, 22px);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-subtitle {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: -0.1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .apple-btn {
+      min-height: 38px;
+      padding: 8px 18px;
+      border: 0;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.18px;
+      transition: transform .2s cubic-bezier(.2, .8, .2, 1),
+        box-shadow .2s cubic-bezier(.2, .8, .2, 1),
+        background .2s ease,
+        opacity .2s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .apple-btn:active { transform: scale(0.97); }
+
+    .apple-btn.primary {
+      color: #fff;
+      background: var(--blue);
+      box-shadow: 0 8px 18px rgba(0, 113, 227, 0.22);
+    }
+
+    .apple-btn.primary:hover {
+      background: var(--blue-hover);
+      box-shadow: 0 10px 24px rgba(0, 113, 227, 0.30);
+      transform: translateY(-1px);
+    }
+
+    .apple-btn.secondary {
+      color: var(--text);
+      background: rgba(0, 0, 0, 0.055);
+    }
+
+    .apple-btn.secondary:hover {
+      background: rgba(0, 0, 0, 0.085);
+      transform: translateY(-1px);
+    }
+
+    .apple-btn.ghost {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid rgba(0, 0, 0, 0.10);
+    }
+
+    .apple-btn.ghost:hover {
+      background: #fff;
+      border-color: rgba(0, 113, 227, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .apple-btn:disabled {
+      opacity: .46;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .hero {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      padding: clamp(32px, 5vw, 64px) var(--page-x) clamp(18px, 3vw, 30px);
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 64px);
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: -2.8px;
+      color: #1d1d1f;
+    }
+
+    .hero p {
+      width: min(720px, 100%);
+      margin: 16px auto 0;
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 22px);
+      line-height: 1.35;
+      letter-spacing: -0.42px;
+    }
+
+    .status-row {
+      width: min(var(--board-max), 100%);
+      margin: 0 auto;
+      padding: 0 var(--page-x) 14px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      padding: 8px 14px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, .58);
+      border: 1px solid rgba(0,0,0,.06);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #34c759;
+      box-shadow: 0 0 0 4px rgba(52,199,89,.14);
+      flex: 0 0 auto;
+    }
+
+    .dot.saving { background: #ff9500; box-shadow: 0 0 0 4px rgba(255,149,0,.16); }
+    .dot.error { background: #ff3b30; box-shadow: 0 0 0 4px rgba(255,59,48,.15); }
+
+    .board-wrap {
+      width: min(var(--board-max), 100%);
+      margin: 0 auto;
+      padding: 8px var(--page-x) 88px;
+    }
+
+    .board-shell {
+      padding: clamp(12px, 2vw, 24px);
+      border-radius: clamp(24px, 3vw, 40px);
+      background: rgba(255, 255, 255, 0.38);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.06);
+      -webkit-backdrop-filter: blur(18px);
+      backdrop-filter: blur(18px);
+    }
+
+    .modules-board {
+      column-width: 310px;
+      column-gap: var(--gap);
+      width: 100%;
+    }
+
+    .idea-card {
+      display: inline-block;
+      width: 100%;
+      margin: 0 0 var(--gap);
+      break-inside: avoid;
+      -webkit-column-break-inside: avoid;
+      page-break-inside: avoid;
+      vertical-align: top;
+      animation: cardIn .28s cubic-bezier(.2, .8, .2, 1) both;
+    }
+
+    .card-surface {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-xl);
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.78);
+      box-shadow: var(--shadow-sm);
+      transition: transform .24s cubic-bezier(.2, .8, .2, 1),
+        box-shadow .24s cubic-bezier(.2, .8, .2, 1),
+        border-color .24s ease,
+        background .24s ease;
+      -webkit-backdrop-filter: blur(22px);
+      backdrop-filter: blur(22px);
+    }
+
+    .view-mode .card-surface:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-md);
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+
+    .card-inner {
+      position: relative;
+      padding: clamp(18px, 2.2vw, 28px);
+    }
+
+    .module-text {
+      min-height: 52px;
+      max-width: 100%;
+      padding: 14px 15px;
+      border-radius: var(--radius-lg);
+      color: var(--text);
+      background: var(--note);
+      border: 1px solid var(--note-border);
+      font-size: clamp(18px, 1.45vw, 21px);
+      font-weight: 680;
+      line-height: 1.55;
+      letter-spacing: -0.35px;
+      outline: none;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+
+    .view-mode .module-text {
+      cursor: copy;
+      user-select: text;
+    }
+
+    .view-mode .module-text:hover {
+      background: #fff5c7;
+      border-color: #e8d98a;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+    }
+
+    .edit-mode .module-text {
+      cursor: text;
+      background: #fff9df;
+      padding-right: 42px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .72);
+    }
+
+    .edit-mode .module-text:focus {
+      background: #ffffff;
+      border-color: rgba(0, 113, 227, .36);
+      box-shadow: 0 0 0 4px rgba(0, 113, 227, .10);
+    }
+
+    .module-text[contenteditable="true"]:empty::before {
+      content: "写下你的灵感…";
+      color: #a1a1a6;
+      font-weight: 520;
+    }
+
+    .delete-module-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(0, 0, 0, 0.10);
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      color: #77777c;
+      background: rgba(255, 255, 255, 0.72);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      transition: transform .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
+      z-index: 2;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .delete-module-btn:hover {
+      color: #ff3b30;
+      background: rgba(255, 59, 48, .12);
+      border-color: rgba(255, 59, 48, .26);
+      transform: scale(1.04);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(28px + env(safe-area-inset-bottom));
+      z-index: 100;
+      transform: translate(-50%, 18px) scale(.98);
+      max-width: min(92vw, 620px);
+      padding: 12px 22px;
+      border-radius: 999px;
+      color: #fff;
+      background: rgba(20, 20, 22, 0.86);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+      -webkit-backdrop-filter: blur(22px);
+      backdrop-filter: blur(22px);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.16px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(10px) scale(.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (min-width: 1600px) {
+      .modules-board { column-width: 340px; }
+    }
+
+    @media (max-width: 900px) {
+      .hero { text-align: left; }
+      .hero h1 { letter-spacing: -2px; }
+      .hero p { margin-left: 0; }
+      .status-row { justify-content: flex-start; }
+      .modules-board { column-width: 280px; }
+    }
+
+    @media (max-width: 680px) {
+      :root { --gap: 16px; }
+
+      .nav-inner {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        gap: 12px;
+      }
+
+      .brand-subtitle { display: none; }
+
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        width: 100%;
+        gap: 10px;
+      }
+
+      .apple-btn {
+        width: 100%;
+        min-height: 42px;
+      }
+
+      .hero { padding-top: 30px; padding-bottom: 18px; }
+      .hero h1 { font-size: 42px; line-height: 1.02; }
+      .hero p { font-size: 18px; }
+
+      .board-shell {
+        padding: 0;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+      }
+
+      .modules-board {
+        columns: 1;
+        column-width: auto;
+      }
+
+      .card-surface { border-radius: 26px; }
+      .card-inner { padding: 16px; }
+
+      .module-text {
+        font-size: 18px;
+        line-height: 1.52;
+        padding: 13px 14px;
+      }
+
+      .edit-mode .module-text { padding-right: 42px; }
+      .delete-module-btn { top: 13px; right: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="glass-nav">
+    <div class="nav-inner">
+      <div class="brand" aria-label="灵感便签">
+        <div class="brand-mark">✦</div>
+        <div class="brand-copy">
+          <div class="brand-title">灵感便签</div>
+          <div class="brand-subtitle">共享查看 · 编辑保存 · 多设备同步</div>
+        </div>
+      </div>
+      <div class="actions" id="actionButtons"></div>
+    </div>
+  </header>
+
+  <section class="hero" aria-label="页面介绍">
+    <h1>简约。强大。像艺术品一样精致。</h1>
+    <p>把常用提示词、Listing 模板和灵感片段整理成共享卡片。所有设备打开同一个链接，即可查看与更新。</p>
+  </section>
+
+  <div class="status-row">
+    <div class="sync-pill" id="syncStatus">
+      <span class="dot" id="syncDot"></span>
+      <span id="syncText">正在连接云端数据…</span>
+    </div>
+  </div>
+
+  <main class="board-wrap">
+    <section class="board-shell" aria-label="便签卡片区域">
+      <div class="modules-board view-mode" id="modulesBoard"></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast">已复制</div>
+
+  <script>
+    /*
+      共享版说明：
+      - 前端不再使用 localStorage 保存主数据。
+      - 数据通过 Cloudflare Pages Functions 写入 KV。
+      - 所有设备访问同一个 Pages 链接，会读取同一份 KV 数据。
+      - 简单共享工具适用；多人同时编辑同一时间保存时，最后保存者会覆盖前一次结果。
+    */
+
+    const API_URL = "/api/notes";
+    const EMPTY_TEXT = "#新点子";
+
+    let modules = [{ id: createId(), text: EMPTY_TEXT }];
+    let mode = "view";
+    let toastTimer = null;
+    let lastTap = { id: null, time: 0 };
+    let isSaving = false;
+    let pollTimer = null;
+    let updatedAt = 0;
+
+    const board = document.getElementById("modulesBoard");
+    const actionButtons = document.getElementById("actionButtons");
+    const toast = document.getElementById("toast");
+    const syncDot = document.getElementById("syncDot");
+    const syncText = document.getElementById("syncText");
+
+    function createId() {
+      return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function normalizeModules(list) {
+      const source = Array.isArray(list) ? list : [];
+      const clean = source
+        .filter(item => item && typeof item === "object")
+        .map(item => ({
+          id: String(item.id || createId()),
+          text: String(item.text ?? "")
+        }));
+
+      const nonEmptyNotes = clean.filter(item => item.text.trim() !== EMPTY_TEXT);
+      const hasEmpty = clean.some(item => item.text.trim() === EMPTY_TEXT);
+
+      // 必须有且只有一个 #新点子，放在末尾
+      nonEmptyNotes.push({
+        id: hasEmpty ? (clean.find(item => item.text.trim() === EMPTY_TEXT)?.id || createId()) : createId(),
+        text: EMPTY_TEXT
+      });
+
+      return nonEmptyNotes;
+    }
+
+    function setStatus(type, text) {
+      syncDot.classList.remove("saving", "error");
+      if (type === "saving") syncDot.classList.add("saving");
+      if (type === "error") syncDot.classList.add("error");
+      syncText.textContent = text;
+    }
+
+    function showToast(message = "已复制", duration = 1500) {
+      window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add("show");
+      toastTimer = window.setTimeout(() => toast.classList.remove("show"), duration);
+    }
+
+    async function copyToClipboard(text) {
+      const content = String(text || "").trim();
+      if (!content) {
+        showToast("暂无内容可复制", 1200);
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(content);
+        showToast("已复制", 1200);
+      } catch (error) {
+        const helper = document.createElement("textarea");
+        helper.value = content;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.top = "-9999px";
+        helper.style.opacity = "0";
+        document.body.appendChild(helper);
+        helper.focus();
+        helper.select();
+
+        try {
+          document.execCommand("copy");
+          showToast("已复制", 1200);
+        } catch (fallbackError) {
+          showToast("复制失败，请手动选择复制", 1600);
+        } finally {
+          document.body.removeChild(helper);
+        }
+      }
+    }
+
+    function syncAllFromDOM() {
+      if (mode !== "edit") return;
+
+      document.querySelectorAll(".idea-card").forEach((card) => {
+        const id = card.dataset.id;
+        const textEl = card.querySelector(".module-text");
+        const target = modules.find((item) => item.id === id);
+        if (target && textEl) target.text = textEl.innerText;
+      });
+      modules = normalizeModules(modules);
+    }
+
+    async function loadFromCloud({ silent = false } = {}) {
+      if (mode === "edit") return;
+
+      if (!silent) setStatus("saving", "正在连接云端数据…");
+
+      try {
+        const res = await fetch(API_URL, { method: "GET", cache: "no-store" });
+        if (!res.ok) throw new Error("读取失败");
+
+        const data = await res.json();
+        modules = normalizeModules(data.modules);
+        updatedAt = Number(data.updatedAt || 0);
+        renderCards();
+
+        const time = updatedAt ? new Date(updatedAt).toLocaleString("zh-CN", { hour12: false }) : "暂无保存记录";
+        setStatus("ok", "云端已同步 · " + time);
+      } catch (error) {
+        setStatus("error", "云端连接失败，请检查 Functions / KV 配置");
+        showToast("云端读取失败", 1800);
+      }
+    }
+
+    async function saveToCloud() {
+      if (isSaving) return;
+      isSaving = true;
+      setStatus("saving", "正在保存到云端…");
+
+      try {
+        modules = normalizeModules(modules);
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ modules })
+        });
+
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || "保存失败");
+        }
+
+        const data = await res.json();
+        updatedAt = Number(data.updatedAt || Date.now());
+
+        const time = new Date(updatedAt).toLocaleString("zh-CN", { hour12: false });
+        setStatus("ok", "云端已保存 · " + time);
+        showToast("已保存到云端", 1300);
+      } catch (error) {
+        setStatus("error", "保存失败，请检查网络或 KV 配置");
+        showToast("保存失败", 1800);
+      } finally {
+        isSaving = false;
+      }
+    }
+
+    function renderButtons() {
+      actionButtons.innerHTML = "";
+
+      if (mode === "view") {
+        const refreshBtn = document.createElement("button");
+        refreshBtn.className = "apple-btn secondary";
+        refreshBtn.textContent = "刷新";
+        refreshBtn.addEventListener("click", () => loadFromCloud());
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "apple-btn ghost";
+        editBtn.textContent = "编辑";
+        editBtn.addEventListener("click", enterEditMode);
+
+        actionButtons.append(refreshBtn, editBtn);
+        return;
+      }
+
+      const addBtn = document.createElement("button");
+      addBtn.className = "apple-btn secondary";
+      addBtn.textContent = "添加模块";
+      addBtn.addEventListener("click", addModule);
+
+      const saveBtn = document.createElement("button");
+      saveBtn.className = "apple-btn primary";
+      saveBtn.textContent = "保存";
+      saveBtn.disabled = isSaving;
+      saveBtn.addEventListener("click", saveAndExit);
+
+      actionButtons.append(addBtn, saveBtn);
+    }
+
+    function renderCards() {
+      board.innerHTML = "";
+      board.classList.toggle("view-mode", mode === "view");
+      board.classList.toggle("edit-mode", mode === "edit");
+
+      modules.forEach((item, index) => {
+        const card = document.createElement("article");
+        card.className = "idea-card";
+        card.dataset.id = item.id;
+        card.style.animationDelay = Math.min(index * 24, 180) + "ms";
+
+        const surface = document.createElement("div");
+        surface.className = "card-surface";
+
+        const inner = document.createElement("div");
+        inner.className = "card-inner";
+
+        const text = document.createElement("div");
+        text.className = "module-text";
+        text.innerText = item.text || "";
+
+        if (mode === "edit") {
+          text.contentEditable = "true";
+          text.spellcheck = false;
+          text.addEventListener("input", () => {
+            const target = modules.find((module) => module.id === item.id);
+            if (target) target.text = text.innerText;
+          });
+        } else {
+          text.removeAttribute("contenteditable");
+
+          text.addEventListener("dblclick", (event) => {
+            event.preventDefault();
+            copyToClipboard(item.text);
+          });
+
+          text.addEventListener("touchend", (event) => {
+            const now = Date.now();
+            const isSameCard = lastTap.id === item.id;
+            const isDoubleTap = isSameCard && now - lastTap.time < 320;
+
+            if (isDoubleTap) {
+              event.preventDefault();
+              copyToClipboard(item.text);
+              lastTap = { id: null, time: 0 };
+            } else {
+              lastTap = { id: item.id, time: now };
+            }
+          }, { passive: false });
+        }
+
+        inner.appendChild(text);
+
+        if (mode === "edit") {
+          const del = document.createElement("button");
+          del.className = "delete-module-btn";
+          del.type = "button";
+          del.setAttribute("aria-label", "删除模块");
+          del.textContent = "×";
+          del.addEventListener("click", () => deleteModule(item.id));
+          inner.appendChild(del);
+        }
+
+        surface.appendChild(inner);
+        card.appendChild(surface);
+        board.appendChild(card);
+      });
+
+      renderButtons();
+    }
+
+    function enterEditMode() {
+      mode = "edit";
+      stopPolling();
+      renderCards();
+      showToast("已进入编辑模式", 1300);
+    }
+
+    function addModule() {
+      if (mode !== "edit") return;
+      syncAllFromDOM();
+
+      const existsEmpty = modules.some(item => item.text.trim() === EMPTY_TEXT);
+      if (existsEmpty) {
+        showToast("已存在一个 #新点子", 1300);
+        return;
+      }
+
+      modules.push({ id: createId(), text: EMPTY_TEXT });
+      modules = normalizeModules(modules);
+      renderCards();
+      showToast("已添加模块", 1200);
+    }
+
+    function deleteModule(id) {
+      if (mode !== "edit") return;
+
+      syncAllFromDOM();
+
+      const target = modules.find(item => item.id === id);
+      const isEmptyNote = target && target.text.trim() === EMPTY_TEXT;
+      const nonEmptyCount = modules.filter(item => item.text.trim() !== EMPTY_TEXT).length;
+
+      if (isEmptyNote && nonEmptyCount === 0) {
+        showToast("必须保留一个 #新点子", 1400);
+        return;
+      }
+
+      modules = modules.filter((item) => item.id !== id);
+      modules = normalizeModules(modules);
+      renderCards();
+      showToast("已删除模块", 1200);
+    }
+
+    async function saveAndExit() {
+      if (mode !== "edit") return;
+
+      syncAllFromDOM();
+      modules = normalizeModules(modules);
+      mode = "view";
+      renderCards();
+      await saveToCloud();
+      startPolling();
+    }
+
+    function startPolling() {
+      stopPolling();
+      pollTimer = window.setInterval(() => {
+        if (mode === "view") loadFromCloud({ silent: true });
+      }, 15000);
+    }
+
+    function stopPolling() {
+      if (pollTimer) {
+        window.clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    // 初始加载云端数据
+    renderCards();
+    loadFromCloud().then(startPolling);
+  </script>
+</body>
+</html>
