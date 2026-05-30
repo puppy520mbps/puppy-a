@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>灵感便签 · 共享版</title>
+  <title>灵感便签 · 本地保存版</title>
   <style>
     :root {
       --bg: #f5f5f7;
@@ -485,7 +486,7 @@
         <div class="brand-mark">✦</div>
         <div class="brand-copy">
           <div class="brand-title">灵感便签</div>
-          <div class="brand-subtitle">共享查看 · 编辑保存 · 多设备同步</div>
+          <div class="brand-subtitle">本地保存 · 手动保存 · 离线可用</div>
         </div>
       </div>
       <div class="actions" id="actionButtons"></div>
@@ -494,7 +495,7 @@
 
   <section class="hero" aria-label="页面介绍">
     <h1>简约。强大。像艺术品一样精致。</h1>
-    <p>把常用提示词、Listing 模板和灵感片段整理成共享卡片。所有设备打开同一个链接，即可查看与更新。</p>
+    <p>把常用提示词、Listing 模板和灵感片段整理成便签卡片。点击保存后，内容会保存在当前浏览器中。</p>
   </section>
 
   <div class="status-row">
@@ -514,14 +515,14 @@
 
   <script>
     /*
-      共享版说明：
-      - 前端不再使用 localStorage 保存主数据。
-      - 数据通过 Cloudflare Pages Functions 写入 KV。
-      - 所有设备访问同一个 Pages 链接，会读取同一份 KV 数据。
-      - 简单共享工具适用；多人同时编辑同一时间保存时，最后保存者会覆盖前一次结果。
+      本地保存版说明：
+      - 不依赖 Cloudflare / KV / 后端接口。
+      - 点击“保存”后，数据写入当前浏览器的 localStorage。
+      - 关闭浏览器后再次打开同一个 HTML 文件，内容仍会保留。
+      - 注意：localStorage 只保存在当前浏览器/当前设备；不同设备之间不会自动同步。
     */
 
-    const API_URL = "/api/notes";
+    const STORAGE_KEY = "idea-notes-local-v1";
     const EMPTY_TEXT = "#新点子";
 
     let modules = [{ id: createId(), text: EMPTY_TEXT }];
@@ -529,7 +530,6 @@
     let toastTimer = null;
     let lastTap = { id: null, time: 0 };
     let isSaving = false;
-    let pollTimer = null;
     let updatedAt = 0;
 
     const board = document.getElementById("modulesBoard");
@@ -552,11 +552,11 @@
         }));
 
       const nonEmptyNotes = clean.filter(item => item.text.trim() !== EMPTY_TEXT);
-      const hasEmpty = clean.some(item => item.text.trim() === EMPTY_TEXT);
+      const emptyNote = clean.find(item => item.text.trim() === EMPTY_TEXT);
 
-      // 必须有且只有一个 #新点子，放在末尾
+      // 必须有且只有一个 #新点子，固定放在末尾
       nonEmptyNotes.push({
-        id: hasEmpty ? (clean.find(item => item.text.trim() === EMPTY_TEXT)?.id || createId()) : createId(),
+        id: emptyNote ? emptyNote.id : createId(),
         text: EMPTY_TEXT
       });
 
@@ -621,54 +621,51 @@
       modules = normalizeModules(modules);
     }
 
-    async function loadFromCloud({ silent = false } = {}) {
+    function loadFromLocal({ silent = false } = {}) {
       if (mode === "edit") return;
 
-      if (!silent) setStatus("saving", "正在连接云端数据…");
+      if (!silent) setStatus("saving", "正在读取本地数据…");
 
       try {
-        const res = await fetch(API_URL, { method: "GET", cache: "no-store" });
-        if (!res.ok) throw new Error("读取失败");
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          modules = normalizeModules(modules);
+          updatedAt = 0;
+          renderCards();
+          setStatus("ok", "本地暂无保存记录");
+          return;
+        }
 
-        const data = await res.json();
+        const data = JSON.parse(raw);
         modules = normalizeModules(data.modules);
         updatedAt = Number(data.updatedAt || 0);
         renderCards();
 
         const time = updatedAt ? new Date(updatedAt).toLocaleString("zh-CN", { hour12: false }) : "暂无保存记录";
-        setStatus("ok", "云端已同步 · " + time);
+        setStatus("ok", "本地已读取 · " + time);
       } catch (error) {
-        setStatus("error", "云端连接失败，请检查 Functions / KV 配置");
-        showToast("云端读取失败", 1800);
+        modules = normalizeModules(modules);
+        renderCards();
+        setStatus("error", "本地数据读取失败，已恢复默认便签");
+        showToast("本地读取失败", 1800);
       }
     }
 
-    async function saveToCloud() {
+    function saveToLocal() {
       if (isSaving) return;
       isSaving = true;
-      setStatus("saving", "正在保存到云端…");
+      setStatus("saving", "正在保存到本地…");
 
       try {
         modules = normalizeModules(modules);
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ modules })
-        });
-
-        if (!res.ok) {
-          const msg = await res.text();
-          throw new Error(msg || "保存失败");
-        }
-
-        const data = await res.json();
-        updatedAt = Number(data.updatedAt || Date.now());
+        updatedAt = Date.now();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ modules, updatedAt }));
 
         const time = new Date(updatedAt).toLocaleString("zh-CN", { hour12: false });
-        setStatus("ok", "云端已保存 · " + time);
-        showToast("已保存到云端", 1300);
+        setStatus("ok", "本地已保存 · " + time);
+        showToast("已保存到本地", 1300);
       } catch (error) {
-        setStatus("error", "保存失败，请检查网络或 KV 配置");
+        setStatus("error", "保存失败：浏览器可能限制了本地存储");
         showToast("保存失败", 1800);
       } finally {
         isSaving = false;
@@ -682,7 +679,7 @@
         const refreshBtn = document.createElement("button");
         refreshBtn.className = "apple-btn secondary";
         refreshBtn.textContent = "刷新";
-        refreshBtn.addEventListener("click", () => loadFromCloud());
+        refreshBtn.addEventListener("click", () => loadFromLocal());
 
         const editBtn = document.createElement("button");
         editBtn.className = "apple-btn ghost";
@@ -780,7 +777,6 @@
 
     function enterEditMode() {
       mode = "edit";
-      stopPolling();
       renderCards();
       showToast("已进入编辑模式", 1300);
     }
@@ -821,34 +817,19 @@
       showToast("已删除模块", 1200);
     }
 
-    async function saveAndExit() {
+    function saveAndExit() {
       if (mode !== "edit") return;
 
       syncAllFromDOM();
       modules = normalizeModules(modules);
       mode = "view";
       renderCards();
-      await saveToCloud();
-      startPolling();
+      saveToLocal();
     }
 
-    function startPolling() {
-      stopPolling();
-      pollTimer = window.setInterval(() => {
-        if (mode === "view") loadFromCloud({ silent: true });
-      }, 15000);
-    }
-
-    function stopPolling() {
-      if (pollTimer) {
-        window.clearInterval(pollTimer);
-        pollTimer = null;
-      }
-    }
-
-    // 初始加载云端数据
+    // 初始加载本地数据
     renderCards();
-    loadFromCloud().then(startPolling);
+    loadFromLocal();
   </script>
 </body>
 </html>
