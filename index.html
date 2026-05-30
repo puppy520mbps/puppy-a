@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>灵感便签 · 共享版</title>
+  <title>灵感便签</title>
   <style>
     :root {
       --bg: #f5f5f7;
@@ -494,7 +494,6 @@
 
   <section class="hero" aria-label="页面介绍">
     <h1>简约。强大。像艺术品一样精致。</h1>
-    <p>把常用提示词、Listing 模板和灵感片段整理成共享卡片。所有设备打开同一个链接，即可查看与更新。</p>
   </section>
 
   <div class="status-row">
@@ -513,13 +512,6 @@
   <div class="toast" id="toast">已复制</div>
 
   <script>
-    /*
-      共享版说明：
-      - 前端不再使用 localStorage 保存主数据。
-      - 数据通过 Cloudflare Pages Functions 写入 KV。
-      - 所有设备访问同一个 Pages 链接，会读取同一份 KV 数据。
-      - 简单共享工具适用；多人同时编辑同一时间保存时，最后保存者会覆盖前一次结果。
-    */
 
     const API_URL = "/api/notes";
     const EMPTY_TEXT = "#新点子";
